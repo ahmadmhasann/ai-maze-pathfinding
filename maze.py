@@ -1,5 +1,5 @@
 import sys
-
+import math
 class Node():
     def __init__(self, state, parent, action):
         self.state = state
@@ -8,7 +8,7 @@ class Node():
 
 
 class Frontier():
-    #Initially the frontier is empty
+    # Initially the frontier is empty
     def __init__(self):
         self.frontier = []
 
@@ -21,8 +21,9 @@ class Frontier():
     def empty(self):
         return len(self.frontier) == 0
 
+# Depth First Search
 class StackFrontier(Frontier):
-    def remove(self):
+    def remove(self, goal):
         if self.empty():
             raise Exception("empty frontier")
         else:
@@ -31,9 +32,9 @@ class StackFrontier(Frontier):
             self.frontier = self.frontier[:-1]
             return node
 
-
+# Breadth First Search
 class QueueFrontier(Frontier):
-    def remove(self):
+    def remove(self, goal):
         if self.empty():
             raise Exception("empty frontier")
         else:
@@ -41,6 +42,30 @@ class QueueFrontier(Frontier):
             node = self.frontier[0]
             self.frontier = self.frontier[1:]
             return node
+
+class Greedy(Frontier):
+    def remove(self, goal):
+
+        def manhattenDistance(node) :
+            res = tuple(map(lambda i, j: abs(i - j), node.state, goal)) 
+            return sum(list(res))
+        if self.empty():
+            raise Exception("empty frontier")
+        else:
+            min = -1
+            for fori in self.frontier:
+                if (min == -1) :
+                    min = manhattenDistance(fori)
+                    node = fori
+                    foriee = fori   
+                if (manhattenDistance(fori) < min) :
+                    min = manhattenDistance(fori)
+                    node = fori
+                    foriee = fori   
+            self.frontier.remove(foriee)            
+        
+            return node
+
 
 class Maze():
     
@@ -66,6 +91,7 @@ class Maze():
         for i in range(self.height):
             row = []
             for j in range(self.width):
+            
                 try:
                     if contents[i][j] == "P":
                         self.start = (i, j)
@@ -96,7 +122,7 @@ class Maze():
                 elif (i, j) == self.goal:
                     print(".", end="")
                 elif solution is not None and (i, j) in solution:
-                    print("-", end="")
+                    print(".", end="")
                 else:
                     print(" ", end="")
             print()
@@ -124,6 +150,7 @@ class Maze():
 
         # Keep track of number of states explored
         self.num_explored = 0
+        self.path_cost = 0
 
         # Initialize frontier to just the starting position
         start = Node(state=self.start, parent=None, action=None)
@@ -141,7 +168,7 @@ class Maze():
                 raise Exception("no solution")
 
             # Choose a node from the frontier
-            node = frontier.remove()
+            node = frontier.remove(self.goal)
             self.num_explored += 1
 
             # If node is the goal, then we have a solution
@@ -153,6 +180,7 @@ class Maze():
                     cells.append(node.state)
                     node = node.parent
                 actions.reverse()
+                self.path_cost = len(actions)
                 cells.reverse()
                 self.solution = (actions, cells)
                 return
@@ -165,11 +193,11 @@ class Maze():
                 if not frontier.contains_state(state) and state not in self.explored:
                     child = Node(state=state, parent=node, action=action)
                     frontier.add(child)
-m = Maze(sys.argv[1])
+maze = Maze(sys.argv[1])
 print("Maze:")
-m.print()
-print("Solving...")
-m.solve()
-print("States Explored:", m.num_explored)
+maze.print()
+maze.solve()
 print("Solution:")
-m.print()
+maze.print()
+print("States Explored:", maze.num_explored)
+print("Path Cost:", maze.path_cost)
