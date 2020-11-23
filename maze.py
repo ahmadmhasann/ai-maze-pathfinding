@@ -1,13 +1,25 @@
 import sys
 import math
-class Node():
+
+
+class Node:
     def __init__(self, state, parent, action):
         self.state = state
         self.parent = parent
         self.action = action
+        self.cost = 0
+
+    def __hash__(self):
+        return hash(self.state)
+
+    def __eq__(self, other):
+        return self.state[0] == other.state[0] and self.state[0] == other.state[1]
+
+    def __ne__(self, other):
+        return not (self == other)
 
 
-class Frontier():
+class Frontier:
     # Initially the frontier is empty
     def __init__(self):
         self.frontier = []
@@ -21,6 +33,7 @@ class Frontier():
     def empty(self):
         return len(self.frontier) == 0
 
+
 # Depth First Search
 class StackFrontier(Frontier):
     def remove(self, goal):
@@ -31,6 +44,7 @@ class StackFrontier(Frontier):
             node = self.frontier[-1]
             self.frontier = self.frontier[:-1]
             return node
+
 
 # Breadth First Search
 class QueueFrontier(Frontier):
@@ -43,32 +57,61 @@ class QueueFrontier(Frontier):
             self.frontier = self.frontier[1:]
             return node
 
+
 class Greedy(Frontier):
     def remove(self, goal):
-
-        def manhattenDistance(node) :
-            res = tuple(map(lambda i, j: abs(i - j), node.state, goal)) 
+        def manhatten_distance(node):
+            res = tuple(map(lambda i, j: abs(i - j), node.state, goal))
             return sum(list(res))
+
         if self.empty():
             raise Exception("empty frontier")
         else:
             min = -1
             for fori in self.frontier:
-                if (min == -1) :
-                    min = manhattenDistance(fori)
+                if min == -1:
+                    min = manhatten_distance(fori)
                     node = fori
-                    foriee = fori   
-                if (manhattenDistance(fori) < min) :
-                    min = manhattenDistance(fori)
+                    foriee = fori
+                if manhatten_distance(fori) < min:
+                    min = manhatten_distance(fori)
                     node = fori
-                    foriee = fori   
-            self.frontier.remove(foriee)            
-        
+                    foriee = fori
+            self.frontier.remove(foriee)
+
             return node
 
 
-class Maze():
-    
+class AStar(Frontier):
+    def remove(self, goal):
+        def manhatten_distance(node):
+            res = tuple(map(lambda i, j: abs(i - j), node.state, goal))
+            return sum(list(res))
+
+        def g(start, current_node):
+            if (
+                start.state[0] == current_node.state[0]
+                and start.state[1] == current_node.state[1]
+            ):
+                return 0
+
+            return abs(start.state[0] - current_node.state[0]) + abs(
+                start.state[1] + current_node.state[1]
+            )
+
+        for node in self.frontier:
+            node.cost = manhatten_distance(node) + g(self.frontier[0], node)
+
+        lowest_node = min(self.frontier, key=lambda x: x.cost)
+
+        if lowest_node is None:
+            raise Exception("Error calculating node that has the lowest cost function")
+
+        self.frontier.remove(lowest_node)
+        return lowest_node
+
+
+class Maze:
     def __init__(self, filename):
 
         # Read file and set height and width of maze
@@ -91,10 +134,13 @@ class Maze():
         for i in range(self.height):
             row = []
             for j in range(self.width):
-            
+
                 try:
                     if contents[i][j] == "P":
                         self.start = (i, j)
+                        # # debuggin
+                        # print(type(self.start))
+                        # print(self.start)
                         row.append(False)
                     elif contents[i][j] == ".":
                         self.goal = (i, j)
@@ -108,7 +154,6 @@ class Maze():
             self.walls.append(row)
 
         self.solution = None
-
 
     def print(self):
         solution = self.solution[1] if self.solution is not None else None
@@ -128,14 +173,13 @@ class Maze():
             print()
         print()
 
-
     def neighbors(self, state):
         row, col = state
         candidates = [
             ("up", (row - 1, col)),
             ("down", (row + 1, col)),
             ("left", (row, col - 1)),
-            ("right", (row, col + 1))
+            ("right", (row, col + 1)),
         ]
 
         result = []
@@ -143,7 +187,6 @@ class Maze():
             if 0 <= r < self.height and 0 <= c < self.width and not self.walls[r][c]:
                 result.append((action, (r, c)))
         return result
-
 
     def solve(self):
         """Finds a solution to maze, if one exists."""
@@ -154,7 +197,7 @@ class Maze():
 
         # Initialize frontier to just the starting position
         start = Node(state=self.start, parent=None, action=None)
-        frontier = QueueFrontier()
+        frontier = AStar()
         frontier.add(start)
 
         # Initialize an empty explored set
@@ -193,6 +236,8 @@ class Maze():
                 if not frontier.contains_state(state) and state not in self.explored:
                     child = Node(state=state, parent=node, action=action)
                     frontier.add(child)
+
+
 maze = Maze(sys.argv[1])
 print("Maze:")
 maze.print()
