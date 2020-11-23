@@ -96,7 +96,7 @@ class AStar(Frontier):
                 return 0
 
             return abs(start.state[0] - current_node.state[0]) + abs(
-                start.state[1] + current_node.state[1]
+                start.state[1] - current_node.state[1]
             )
 
         for node in self.frontier:
