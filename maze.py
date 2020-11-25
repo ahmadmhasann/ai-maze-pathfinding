@@ -1,5 +1,4 @@
 import sys
-import math
 
 
 class Node:
@@ -238,11 +237,13 @@ class Maze:
                     frontier.add(child)
 
 
-maze = Maze(sys.argv[1])
-print("Maze:")
-maze.print()
-maze.solve()
-print("Solution:")
-maze.print()
-print("States Explored:", maze.num_explored)
-print("Path Cost:", maze.path_cost)
+if __name__ == "__main__":
+
+    maze = Maze(sys.argv[1])
+    print("Maze:")
+    maze.print()
+    maze.solve()
+    print("Solution:")
+    maze.print()
+    print("States Explored:", maze.num_explored)
+    print("Path Cost:", maze.path_cost)
