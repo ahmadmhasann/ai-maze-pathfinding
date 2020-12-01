@@ -68,23 +68,20 @@ class Greedy(Frontier):
             raise Exception("empty frontier")
         else:
             min = -1
-            for fori in self.frontier:
+            for node in self.frontier:
                 if min == -1:
                     min = manhatten_distance(fori)
-                    node = fori
-                    foriee = fori
+                    min_node = node
                 if manhatten_distance(fori) < min:
                     min = manhatten_distance(fori)
-                    node = fori
-                    foriee = fori
-            self.frontier.remove(foriee)
-
-            return node
+                    min_node = node
+            self.frontier.remove(min_node)
+            return min_node
 
 
 class AStar(Frontier):
-    def remove(self, goal):
-        def manhatten_distance(node):
+    def remove(self, goals, current_goal, current_explored):
+        def manhatten_distance(node, goal):
             res = tuple(map(lambda i, j: abs(i - j), node.state, goal))
             return sum(list(res))
 
@@ -98,17 +95,38 @@ class AStar(Frontier):
             return abs(start.state[0] - current_node.state[0]) + abs(
                 start.state[1] - current_node.state[1]
             )
-
-        for node in self.frontier:
-            node.cost = manhatten_distance(node) + g(self.frontier[0], node)
-
-        lowest_node = min(self.frontier, key=lambda x: x.cost)
+        min_cost = -1
+        lowest_node = self.frontier[0]
+        if current_goal is not None:
+            for node in self.frontier:
+                if min_cost != -1 and manhatten_distance(node, current_goal) + g(self.frontier[0], node) < min_cost:
+                    min_cost = manhatten_distance(node, current_goal) + g(self.frontier[0], node)
+                    lowest_node = node
+                elif min_cost == -1:
+                    min_cost = manhatten_distance(node, current_goal) + g(self.frontier[0], node)
+                    lowest_node = node
+        else:
+            for goal in goals:
+                for node in self.frontier:
+                    if min_cost != -1 and manhatten_distance(node, goal) + g(self.frontier[0], node) < min_cost:
+                        current_goal = goal
+                        min_cost = manhatten_distance(node, goal) + g(self.frontier[0], node)
+                        lowest_node = node
+                    elif min_cost == -1:
+                        min_cost = manhatten_distance(node, goal) + g(self.frontier[0], node)
+                        lowest_node = node
 
         if lowest_node is None:
             raise Exception("Error calculating node that has the lowest cost function")
 
         self.frontier.remove(lowest_node)
-        return lowest_node
+        if (current_goal == lowest_node.state):
+            goals.remove(current_goal)
+            current_explored = set()
+            print (current_goal)
+            current_goal = None
+        
+        return lowest_node, goals, current_goal, current_explored
 
 
 class Maze:
@@ -121,8 +139,6 @@ class Maze:
         # Validate start and goal
         if contents.count("P") != 1:
             raise Exception("maze must have exactly one start point")
-        if contents.count(".") != 1:
-            raise Exception("maze must have exactly one goal")
 
         # Determine height and width of maze
         contents = contents.splitlines()
@@ -131,6 +147,7 @@ class Maze:
 
         # Keep track of walls
         self.walls = []
+        self.goals = []
         for i in range(self.height):
             row = []
             for j in range(self.width):
@@ -143,7 +160,7 @@ class Maze:
                         # print(self.start)
                         row.append(False)
                     elif contents[i][j] == ".":
-                        self.goal = (i, j)
+                        self.goals.append ((i, j))
                         row.append(False)
                     elif contents[i][j] == " ":
                         row.append(False)
@@ -164,7 +181,7 @@ class Maze:
                     print("%", end="")
                 elif (i, j) == self.start:
                     print("P", end="")
-                elif (i, j) == self.goal:
+                elif (i, j) in self.goals:
                     print(".", end="")
                 elif solution is not None and (i, j) in solution:
                     print(".", end="")
@@ -202,20 +219,25 @@ class Maze:
 
         # Initialize an empty explored set
         self.explored = set()
+        self.current_explored = set()
+        current_goal = None
 
         # Keep looping until solution found
         while True:
 
             # If nothing left in frontier, then no path
             if frontier.empty():
+                for goal in self.goals:
+                    print (goal)
                 raise Exception("no solution")
 
             # Choose a node from the frontier
-            node = frontier.remove(self.goal)
+            node, self.goals, current_goal, self.current_explored = frontier.remove(self.goals, current_goal, self.current_explored)
             self.num_explored += 1
+            print(len(self.goals))
 
             # If node is the goal, then we have a solution
-            if node.state == self.goal:
+            if len(self.goals) == 1:
                 actions = []
                 cells = []
                 while node.parent is not None:
@@ -230,10 +252,11 @@ class Maze:
 
             # Mark node as explored
             self.explored.add(node.state)
+            self.current_explored.add(node.state)
 
             # Add neighbors to frontier
             for action, state in self.neighbors(node.state):
-                if not frontier.contains_state(state) and state not in self.explored:
+                if not frontier.contains_state(state) and state not in self.current_explored:
                     child = Node(state=state, parent=node, action=action)
                     frontier.add(child)
 
